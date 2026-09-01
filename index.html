@@ -1,0 +1,1095 @@
+<!DOCTYPE html><script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Cnp Environment Security Map",
+  "schemaVersion": 1,
+  "description": "Interactive full technology environment + security discovery map for whiteboarding CNP prospect/client meetings. 15 pillars (7 environment, 8 security) with click-to-mark Present/Gap/Unknown status per component, CNP coverage badges, and per-prospect save/load."
+}
+</script>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CNP Environment &amp; Security Discovery Map</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: #f4f5f7;
+    color: #1a2433;
+  }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 20px 24px 60px; }
+
+  /* Top bar */
+  .topbar {
+    background: #0A1C2D;
+    color: #fff;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 18px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .topbar h1 { margin: 0 0 4px; font-size: 20px; letter-spacing: 0.3px; }
+  .topbar .sub { color: #cbd5e1; font-size: 12.5px; max-width: 560px; line-height: 1.4; }
+  .brandline { color: #CD9720; font-weight: 600; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+  .topbar-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .topbar input[type=text] {
+    background: #142b42; border: 1px solid #2c4864; color: #fff; border-radius: 6px;
+    padding: 8px 10px; font-size: 13px; min-width: 190px;
+  }
+  .topbar input[type=text]::placeholder { color: #8fa3b8; }
+  select {
+    background: #142b42; border: 1px solid #2c4864; color: #fff; border-radius: 6px;
+    padding: 8px 10px; font-size: 13px;
+  }
+  button.btn {
+    background: #CD9720; color: #0A1C2D; border: none; border-radius: 6px;
+    padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  button.btn:hover { background: #e0aa2d; }
+  button.btn.ghost {
+    background: transparent; color: #fff; border: 1px solid #3a5570;
+    font-weight: 500;
+  }
+  button.btn.ghost:hover { background: #142b42; }
+  button.btn.danger { background: transparent; color: #f3a1a1; border: 1px solid #6b3232; font-weight: 500; }
+  button.btn.danger:hover { background: #2a1414; }
+
+  /* Tabs */
+  .tabbar { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    flex: 1; text-align: left; background: #fff; border: 1px solid #e3e6ea; border-radius: 10px;
+    padding: 14px 18px; cursor: pointer; transition: border-color .15s, box-shadow .15s;
+  }
+  .tab-btn:hover { border-color: #CD9720; }
+  .tab-btn.active { border-color: #0A1C2D; box-shadow: 0 0 0 2px #0A1C2D inset; }
+  .tab-btn .t-title { font-size: 14px; font-weight: 700; color: #0A1C2D; margin-bottom: 3px; }
+  .tab-btn .t-desc { font-size: 11.5px; color: #64748b; line-height: 1.4; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* Scorecard */
+  .scorecard {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  .score-card {
+    flex: 1 1 140px; background: #fff; border-radius: 10px; padding: 14px 16px;
+    border: 1px solid #e3e6ea; box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .score-card .num { font-size: 26px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+  .score-card .lbl { font-size: 11.5px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+  .score-card.present .num { color: #1a8f4c; }
+  .score-card.gap .num { color: #c0392b; }
+  .score-card.unknown .num { color: #94a3b8; }
+  .score-card.total .num { color: #0A1C2D; }
+
+  /* Section headers */
+  .section-header {
+    padding: 12px 18px; border-radius: 8px; margin: 26px 0 14px;
+    color: #fff; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  }
+  .section-header.env { background: linear-gradient(90deg,#0A1C2D,#123350); }
+  .section-header.sec { background: linear-gradient(90deg,#5c1418,#7a2020); }
+  .section-header h2 { margin: 0; font-size: 15px; letter-spacing: 0.6px; text-transform: uppercase; }
+  .section-header .desc { font-size: 12px; color: #dfe6ee; max-width: 640px; }
+
+  /* Pillar grid */
+  .pillar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 14px; }
+  .pillar {
+    background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .pillar-head {
+    padding: 12px 14px; border-bottom: 1px solid #eef0f2; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .pillar.env .pillar-head { border-left: 4px solid #1d4e78; }
+  .pillar.sec .pillar-head { border-left: 4px solid #8a2a2a; }
+  .pillar-title { font-size: 14px; font-weight: 700; color: #0A1C2D; }
+  .pillar-meta { display: flex; align-items: center; gap: 8px; }
+  .badge {
+    font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 20px; letter-spacing: 0.3px; white-space: nowrap;
+  }
+  .badge.core { background: #e3f6ea; color: #12703c; }
+  .badge.advisory { background: #fdf1da; color: #92660b; }
+  .badge.partner { background: #f1e6f9; color: #6b2fa3; }
+  .badge.outside { background: #eef0f2; color: #5b6b7a; }
+  .pillar-count { font-size: 11px; color: #8a94a0; min-width: 46px; text-align: right; }
+  .pillar-note { padding: 8px 14px; font-size: 11.5px; color: #64748b; background: #fafbfc; border-bottom: 1px solid #eef0f2; }
+  .chevron { transition: transform 0.15s; color: #94a3b8; font-size: 12px; }
+  .pillar.collapsed .chevron { transform: rotate(-90deg); }
+  .pillar.collapsed .pillar-body { display: none; }
+
+  .pillar-body { padding: 6px 10px 10px; }
+  .item-row {
+    display: grid; grid-template-columns: 1.5fr 1fr auto; gap: 8px; align-items: center;
+    padding: 7px 4px; border-bottom: 1px dashed #eef0f2;
+  }
+  .item-row:last-child { border-bottom: none; }
+  .item-name { font-size: 12.5px; color: #26313e; }
+  .item-vendor input, .item-notes input {
+    width: 100%; border: 1px solid #e3e6ea; border-radius: 5px; padding: 5px 7px;
+    font-size: 12px; color: #26313e; background: #fbfcfd;
+  }
+  .item-vendor input:focus, .item-notes input:focus { outline: 1.5px solid #CD9720; background: #fff; }
+  .status-toggle { display: flex; gap: 3px; }
+  .status-btn {
+    border: 1px solid #dfe3e7; background: #fff; color: #8a94a0; font-size: 10px; font-weight: 700;
+    padding: 5px 8px; border-radius: 5px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .status-btn.present.active { background: #1a8f4c; border-color: #1a8f4c; color: #fff; }
+  .status-btn.gap.active { background: #c0392b; border-color: #c0392b; color: #fff; }
+  .status-btn.unknown.active { background: #94a3b8; border-color: #94a3b8; color: #fff; }
+  .notes-row { grid-column: 1 / -1; padding: 0 4px 6px; }
+
+  .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px; color:#5b6b7a; margin: 6px 0 4px; align-items:center; }
+  .legend b { color:#0A1C2D; }
+
+  .footer-note {
+    margin-top: 30px; padding: 14px 18px; background: #fff; border: 1px solid #e3e6ea; border-radius: 10px;
+    font-size: 11.5px; color: #64748b; line-height: 1.6;
+  }
+  .footer-note b { color: #0A1C2D; }
+
+  /* Day in the Life tab */
+  .dtl-setup {
+    background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; padding: 16px 18px; margin-bottom: 18px;
+    display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;
+  }
+  .dtl-field { display: flex; flex-direction: column; gap: 4px; }
+  .dtl-field label { font-size: 10.5px; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; }
+  .dtl-field input[type=text] {
+    border: 1px solid #dfe3e7; border-radius: 6px; padding: 8px 10px; font-size: 13px; min-width: 170px; color: #1a2433;
+  }
+  .dtl-field input[type=text]:focus { outline: 1.5px solid #CD9720; }
+  .view-toggle { display: flex; gap: 0; border: 1px solid #0A1C2D; border-radius: 6px; overflow: hidden; margin-left: auto; }
+  .view-toggle button {
+    border: none; background: #fff; color: #0A1C2D; padding: 9px 14px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  }
+  .view-toggle button.active { background: #0A1C2D; color: #fff; }
+  .dtl-legend { font-size: 11.5px; color: #5b6b7a; margin-bottom: 16px; line-height: 1.6; }
+
+  .persona-key { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  .persona-chip { display: flex; align-items: center; gap: 7px; background: #fff; border: 1px solid #e3e6ea; border-radius: 20px; padding: 6px 12px 6px 6px; font-size: 12px; }
+  .persona-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .persona-chip b { color: #0A1C2D; }
+
+  .timeline { position: relative; padding-left: 8px; }
+  .beat {
+    background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; margin-bottom: 12px; overflow: hidden;
+    border-left: 5px solid #ccc;
+  }
+  .beat-head { padding: 13px 16px; cursor: pointer; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .beat-time { font-size: 12px; font-weight: 800; color: #0A1C2D; min-width: 68px; }
+  .beat-persona-chip { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 20px; color: #fff; white-space: nowrap; }
+  .beat-scenario { font-size: 13px; color: #26313e; flex: 1; min-width: 180px; }
+  .beat-chevron { color: #94a3b8; font-size: 12px; transition: transform .15s; margin-left: auto; }
+  .beat.collapsed .beat-chevron { transform: rotate(-90deg); }
+  .beat.collapsed .beat-body { display: none; }
+  .beat-body { padding: 0 16px 16px; border-top: 1px solid #eef0f2; }
+  .beat-row { padding: 12px 0; border-bottom: 1px dashed #eef0f2; }
+  .beat-row:last-child { border-bottom: none; }
+  .beat-row .row-label { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #8a94a0; margin-bottom: 5px; }
+  .beat-row .row-body { font-size: 13px; color: #26313e; line-height: 1.55; }
+  .beat-row .row-body .stat { color: #0A1C2D; font-weight: 700; }
+  .beat-row .row-body .src { color: #94a3b8; font-size: 11px; }
+  .comp-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .comp-badge { font-size: 11px; padding: 4px 9px; border-radius: 6px; background: #f4f5f7; color: #26313e; border: 1px solid #e3e6ea; }
+  .scale-flag { display: inline-block; margin-top: 6px; font-size: 11px; color: #92660b; background: #fdf1da; padding: 3px 8px; border-radius: 6px; }
+  .rep-only { background: #fbf7ec; border: 1px dashed #CD9720; border-radius: 8px; padding: 10px 12px; }
+  .rep-only .row-label { color: #92660b; }
+  body.prospect-view .rep-only { display: none; }
+
+  /* Static View (persona journey cards) */
+  .mode-toggle { display: flex; gap: 0; border: 1px solid #0A1C2D; border-radius: 6px; overflow: hidden; margin-bottom: 16px; width: fit-content; }
+  .mode-toggle button { border: none; background: #fff; color: #0A1C2D; padding: 9px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+  .mode-toggle button.active { background: #0A1C2D; color: #fff; }
+  .sv-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px; }
+  .sv-subtoggle { display: flex; gap: 0; border: 1px solid #CD9720; border-radius: 6px; overflow: hidden; }
+  .sv-subtoggle button { border: none; background: #fff; color: #92660b; padding: 7px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .sv-subtoggle button.active { background: #CD9720; color: #fff; }
+  .sv-personatabs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sv-personatabs button {
+    border: 1px solid #e3e6ea; background: #fff; color: #26313e; padding: 7px 13px; font-size: 12px; font-weight: 700;
+    border-radius: 20px; cursor: pointer;
+  }
+  .sv-personatabs button.active { background: #0A1C2D; color: #fff; border-color: #0A1C2D; }
+  body.prospect-view .sv-rep-only { display: none; }
+
+  .static-panel { background: #0A1C2D; border-radius: 14px; padding: 26px 24px; color: #fff; }
+  .static-panel h3 { margin: 0 0 4px; font-size: 18px; }
+  .static-panel .sp-sub { color: #cbd5e1; font-size: 12.5px; line-height: 1.5; max-width: 800px; margin-bottom: 14px; }
+  .static-lens { background: rgba(205,151,32,0.14); border: 1px solid #CD9720; color: #f5deac; border-radius: 8px; padding: 8px 14px; font-size: 12px; font-weight: 700; margin-bottom: 18px; display: inline-block; }
+  .stage-row { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .stage-row-2 { margin-top: 14px; }
+  .stage-box {
+    background: #eef3f8; color: #1a2433; border-radius: 10px; padding: 13px 14px; flex: 1 1 150px; min-width: 150px;
+    border-top: 4px solid #999; display: flex; flex-direction: column;
+  }
+  .stage-box .stage-cat { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #5b6b7a; margin-bottom: 3px; }
+  .stage-box .stage-title { font-weight: 800; font-size: 12.5px; margin-bottom: 4px; }
+  .stage-box .stage-desc { font-size: 11.5px; color: #3d4a5a; line-height: 1.4; margin-bottom: 8px; }
+  .stage-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .stage-tag { background: #dde5ee; color: #26313e; border-radius: 10px; padding: 2px 8px; font-size: 10px; font-weight: 600; }
+  .stage-ask { font-size: 11px; color: #1a2433; font-style: italic; margin-top: auto; border-top: 1px dashed #c3ccd6; padding-top: 6px; }
+  .stage-arrow { align-self: center; color: #CD9720; font-size: 18px; font-weight: 800; padding: 0 2px; }
+  .cross-bands { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .cross-band { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18); border-radius: 8px; padding: 9px 14px; font-size: 11.5px; line-height: 1.5; }
+  .cross-band b { color: #CD9720; }
+
+  .ov-catrow { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+  .ov-personarow { display: flex; gap: 10px; align-items: flex-start; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18); border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; color: #fff; }
+  .ov-personarow b { min-width: 120px; color: #CD9720; }
+
+  .tax-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+  .tax-card { background: #eef3f8; color: #1a2433; border-radius: 10px; padding: 12px 14px; }
+  .tax-card .tax-pillarline { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px; color: #5b6b7a; margin-bottom: 5px; }
+  .tax-card .tax-item { font-size: 12.5px; font-weight: 700; margin-bottom: 5px; }
+  .tax-card .tax-note { font-size: 11px; color: #3d4a5a; line-height: 1.4; }
+
+  @media print {
+    body { background: #fff; }
+    .topbar-controls, .no-print, .tabbar, .view-toggle, .mode-toggle, .sv-controls { display: none !important; }
+    .pillar.collapsed .pillar-body { display: block !important; }
+    .beat.collapsed .beat-body { display: block !important; }
+    .pillar, .beat { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <div class="brandline">CNP Technologies &middot; Strategic Technology Advisory</div>
+      <h1 id="mainTitle">Full Environment &amp; Security Discovery Map</h1>
+      <div class="sub" id="mainSub">Whiteboard this live with a prospect or client: mark each component Present, a Gap, or Unknown as you talk through their environment. Use it to tell the CNP story &mdash; where we already fit, and where there's an opening.</div>
+    </div>
+    <div class="topbar-controls no-print" id="mapControls">
+      <input type="text" id="clientName" placeholder="Prospect / client name">
+      <select id="savedPicker"><option value="">Saved environments&hellip;</option></select>
+      <button class="btn ghost" id="loadBtn">Load</button>
+      <button class="btn" id="saveBtn">Save</button>
+      <button class="btn ghost" id="newBtn">New</button>
+      <button class="btn danger" id="deleteBtn">Delete</button>
+      <button class="btn ghost" id="printBtn">Print / PDF</button>
+    </div>
+  </div>
+
+  <div class="tabbar no-print">
+    <div class="tab-btn active" data-tab="map">
+      <div class="t-title">1. Discovery Map</div>
+      <div class="t-desc">Pillar-by-pillar whiteboard: mark Present / Gap / Unknown per component.</div>
+    </div>
+    <div class="tab-btn" data-tab="day">
+      <div class="t-title">2. Day in the Life</div>
+      <div class="t-desc">Walk the same stack through one workday &mdash; basic user, admin, leader, C-level &mdash; to make the "why" land.</div>
+    </div>
+  </div>
+
+  <!-- ============ TAB 1: DISCOVERY MAP ============ -->
+  <div class="tab-pane active" id="tab-map">
+
+    <div class="scorecard no-print">
+      <div class="score-card total"><div class="num" id="scoreTotal">0</div><div class="lbl">Components mapped</div></div>
+      <div class="score-card present"><div class="num" id="scorePresent">0</div><div class="lbl">Present</div></div>
+      <div class="score-card gap"><div class="num" id="scoreGap">0</div><div class="lbl">Gaps found</div></div>
+      <div class="score-card unknown"><div class="num" id="scoreUnknown">0</div><div class="lbl">Unknown / TBD</div></div>
+    </div>
+
+    <div class="legend no-print">
+      <span><b>CNP coverage:</b></span>
+      <span class="badge core">CNP Core</span> CNP delivers this directly today
+      <span class="badge advisory">CNP Advisory</span> CNP can architect/advise; build-out in progress
+      <span class="badge partner">CNP + Partner</span> delivered via CNP-managed partner (e.g. SilverSky, Foresite)
+      <span class="badge outside">Client-Owned</span> typically outside CNP's current scope
+    </div>
+
+    <div class="section-header env">
+      <h2>The Environment</h2>
+      <div class="desc">Everything the business runs on &mdash; devices, network, data center, comms, and the apps people use every day.</div>
+    </div>
+    <div class="pillar-grid" id="envGrid"></div>
+
+    <div class="section-header sec">
+      <h2>The Security &amp; Risk Layer</h2>
+      <div class="desc">What protects the environment above &mdash; mapped to CNP's standing 8-pillar security framework.</div>
+    </div>
+    <div class="pillar-grid" id="secGrid"></div>
+
+    <div class="footer-note">
+      <b>How to use this:</b> Work pillar by pillar, not top to bottom &mdash; steer toward whatever's most relevant to what you already know about the account. A component marked <b>Gap</b> with a <b>CNP Core</b> or <b>CNP Advisory</b> badge is a live opportunity; capture a renewal date in Notes wherever one exists, since that's the forcing function for timing the conversation. This view is a discovery aid, not a contract &mdash; confirm exact CNP scope against the current SOW/TechAdvantage tier before quoting anything to a client. Save a named copy per prospect using the controls above (stored locally in this browser). See the <b>Day in the Life</b> tab for the scenario-based walkthrough of this same stack.
+    </div>
+
+  </div>
+
+  <!-- ============ TAB 2: DAY IN THE LIFE ============ -->
+  <div class="tab-pane" id="tab-day">
+
+    <div class="dtl-setup no-print">
+      <div class="dtl-field"><label>Company</label><input type="text" id="dtlCompany" placeholder="e.g. Meridian Manufacturing"></div>
+      <div class="dtl-field"><label>Basic User</label><input type="text" id="dtlNameUser" placeholder="Maria, AP Clerk"></div>
+      <div class="dtl-field"><label>IT Admin</label><input type="text" id="dtlNameAdmin" placeholder="James, IT Admin"></div>
+      <div class="dtl-field"><label>Leader</label><input type="text" id="dtlNameLeader" placeholder="Dana, Ops Director"></div>
+      <div class="dtl-field"><label>C-Level</label><input type="text" id="dtlNameCLevel" placeholder="Robert, CFO"></div>
+      <div class="view-toggle">
+        <button class="active" data-view="rep">Rep View</button>
+        <button data-view="prospect">Prospect View</button>
+      </div>
+    </div>
+
+    <div class="mode-toggle no-print" id="dtlModeToggle">
+      <button class="active" data-mode="timeline">Timeline</button>
+      <button data-mode="static">Static View</button>
+    </div>
+
+    <div id="timelineView">
+      <div class="dtl-legend no-print">
+        One workday, one company, four people. Walk it beat by beat &mdash; each stop shows what's supposed to be protecting that moment, what happens if it isn't, and where CNP fits. <b>Rep View</b> shows your talking points and the sales angle; <b>Prospect View</b> hides those so you can screen-share safely. Component badges use the same CNP coverage key as the Discovery Map tab.
+      </div>
+
+      <div class="persona-key no-print">
+        <div class="persona-chip"><span class="persona-dot" style="background:#1d4e78"></span><b>Basic User</b> &mdash; front-line staff</div>
+        <div class="persona-chip"><span class="persona-dot" style="background:#12703c"></span><b>IT Admin</b> &mdash; keeps the lights on</div>
+        <div class="persona-chip"><span class="persona-dot" style="background:#92660b"></span><b>Leader</b> &mdash; department/ops management</div>
+        <div class="persona-chip"><span class="persona-dot" style="background:#5c1418"></span><b>C-Level</b> &mdash; exec/finance leadership</div>
+      </div>
+
+      <div class="timeline" id="dtlTimeline"></div>
+    </div>
+
+    <div id="staticView" style="display:none;">
+      <div class="sv-controls no-print">
+        <div class="sv-subtoggle" id="svSubtoggle">
+          <button class="active" data-cat="simplified">Simplified</button>
+          <button data-cat="full">Full Taxonomy</button>
+        </div>
+        <div class="sv-personatabs" id="svPersonaTabs">
+          <button class="active" data-persona="overview">Overview</button>
+          <button data-persona="user">Basic User</button>
+          <button data-persona="admin">IT Admin</button>
+          <button data-persona="leader">Leader</button>
+          <button data-persona="clevel">C-Level</button>
+        </div>
+      </div>
+      <div id="staticPanelHost"></div>
+    </div>
+
+    <div class="footer-note">
+      <b>How to use this:</b> Don't read it top to bottom in the meeting &mdash; open with whichever persona the prospect in the room actually is (a CFO cares about the 4:00 PM beat, not the 6:45 AM one), then widen out. Every beat's risk framing is backed by a cited, dated stat &mdash; re-verify anything older than a year before quoting it, per CNP's standing research rule. The "CNP Angle" in Rep View is a starting talking point, not a scoped quote &mdash; confirm exact deliverables against the current TechAdvantage tier before promising anything. <b>Static View</b> is the same story as a printable, one-screen-per-persona visual (Simplified generic categories, or CNP's Full 15-pillar taxonomy) &mdash; use it to open a meeting or drop into a leave-behind. A matching client-facing leave-behind document (no sales-angle callouts) is available in the project folder as "CNP Day in the Life - Cyber Risk Walkthrough.docx", and a printable persona-journey PDF is available as "CNP Day in the Life - Persona Journey Maps.pdf".
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+(function(){
+
+  var ENV = [
+    { key:'enduser', name:'End-User Devices &amp; Productivity', coverage:'core',
+      note:'Hardware + productivity suite — Dell / HPE / Lenovo / HP, Microsoft 365.',
+      items:['Laptops','Desktops','Tablets &amp; Mobile Devices','Printers / Multifunction Devices (MFDs)','Productivity Suite (Microsoft 365 / Google Workspace)'] },
+    { key:'uc', name:'Unified Communications &amp; Collaboration', coverage:'core',
+      note:'One of CNP\'s five core service pillars — 8x8, Mitel, RingCentral, Dialpad, Zoom, GoTo, Poly, Yealink, Zultys.',
+      items:['Phone System / PBX (cloud or on-prem)','Desk Phones / Softphones','Video &amp; AV Conferencing','Contact Center / Customer Experience Platform','Collaboration &amp; Chat Tools'] },
+    { key:'network', name:'Network Infrastructure', coverage:'core',
+      note:'Data Center &amp; Network Infrastructure pillar — Fortinet, Cisco Meraki, HPE Aruba.',
+      items:['Routers','Switches','Wireless Access Points','Internet Circuits / SD-WAN','VPN / Remote Access','Guest Wi-Fi &amp; Network Segmentation'] },
+    { key:'dc', name:'Data Center &amp; Compute', coverage:'core',
+      note:'Dell, HPE, Nutanix, VMware, Hyper-V, NetApp, Veeam, ObjectFirst.',
+      items:['Physical Servers','Virtual Servers / Hypervisor','Storage (SAN / NAS)','VDI / Remote Desktop','Backup Infrastructure / Target'] },
+    { key:'facilities', name:'Facilities &amp; Power', coverage:'advisory',
+      note:'Flagged during infrastructure reviews; not a standing CNP product line.',
+      items:['UPS / Power Redundancy','Rack Layout &amp; Cable Management','Environmental Controls (HVAC, Fire Suppression)','Physical / Video Surveillance'] },
+    { key:'apps', name:'Applications &amp; Cloud', coverage:'advisory',
+      note:'M365/Azure tenant is CNP Core; core business apps (ERP/CRM) support varies by account.',
+      items:['Core Business Apps (ERP, CRM, LOB)','Microsoft 365 / Azure Tenant','Public Cloud Workloads (IaaS / PaaS / SaaS)','SaaS Sprawl / Shadow IT'] },
+    { key:'itops', name:'IT Operations &amp; Management', coverage:'core',
+      note:'This is what TechAdvantage organizes — NinjaOne RMM, ticketing, monitoring.',
+      items:['Help Desk / Ticketing (ITSM)','RMM (Remote Monitoring &amp; Management)','PSA Tool','24/7 Infrastructure Monitoring / NOC','Documentation &amp; Asset Lifecycle (CMDB)'] }
+  ];
+
+  var SEC = [
+    { key:'iam', name:'Identity &amp; Access Management', coverage:'advisory',
+      note:'MFA (Cisco Duo) is CNP Core today; broader IAM stack is an active build-out pillar.',
+      items:['Single Sign-On (SSO)','Multi-Factor Authentication (MFA)','Privileged Access Management (PAM)','Identity Governance &amp; Administration (IGA)','Directory Services (Active Directory / Entra ID)','Identity Threat Detection &amp; Response (ITDR)','Conditional Access / Zero Trust Policy Engine','Password Management / Vaulting'] },
+    { key:'endpoint', name:'Endpoint &amp; Device Security', coverage:'core',
+      note:'SentinelOne, Sophos, NinjaOne.',
+      items:['Endpoint Protection / Antivirus (Next-Gen AV)','Endpoint Detection &amp; Response (EDR) Agent','Mobile Device Management (MDM)','Patch Management','Device Encryption','Remote Monitoring &amp; Management (RMM)','IoT / OT Device Security'] },
+    { key:'netsec', name:'Network &amp; Infrastructure Security', coverage:'core',
+      note:'Firewall (Fortinet) is CNP Core; several advanced capabilities below are advisory-stage.',
+      items:['HW Firewall','SW Firewall','Intrusion Detection &amp; Prevention (IDS/IPS)','URL Filtering','Sandbox Detection','DNS Security','IoT Security','Data Loss Prevention (DLP)','Cloud Access Security Broker (CASB)','Observability &amp; AIOps','Remote Access for Users','Secure Web Gateway (SWG)','SD-WAN'] },
+    { key:'cloudsec', name:'Cloud &amp; Application Security', coverage:'advisory',
+      note:'Newer pillar for CNP — no confirmed dedicated vendor yet; architected case-by-case.',
+      items:['Application Security','Cloud Security Posture Mgmt. (CSPM)','Cloud Infra Entitlement Mgmt. (CIEM)','Agentless Workload Security','Data Security Posture Management (DSPM)','Cloud Discovery &amp; Exposure Mgmt.','Cloud Workload Protection (CWP)','API Security'] },
+    { key:'secops', name:'Security Operations', coverage:'partner',
+      note:'Currently delivered via managed partners (SilverSky, Foresite); insourcing is an active CNP initiative.',
+      items:['SIEM','Endpoint Detection &amp; Response Platform (EDR)','Network Detection &amp; Response (NDR)','Cloud Detection &amp; Response (CDR)','SOAR','Threat Intelligence Mgmt. (TIM)','Attack Surface Mgmt. / Vulnerability Mgmt.','User and Entity Behavior Analytics (UEBA)'] },
+    { key:'aisec', name:'AI Security', coverage:'advisory',
+      note:'Newest, least mature pillar for CNP — policy and advisory conversation today.',
+      items:['AI / LLM Usage Governance Policy','Shadow AI Discovery &amp; Visibility','AI Data Loss Prevention (AI-DLP)','Enterprise AI Tool Security (e.g. Microsoft Copilot)','AI Model Access Controls','Prompt Injection / AI Threat Monitoring','Third-Party AI Vendor Risk Review'] },
+    { key:'ir', name:'Incident Response &amp; Recovery', coverage:'partner',
+      note:'Backup/DR (Druva, Veeam) is CNP Core; IR retainer &amp; forensics typically run through a partner.',
+      items:['Incident Response Plan &amp; Playbooks','IR Retainer (external firm on call)','Tabletop Exercise Cadence','Digital Forensics','Breach Notification / Communication Templates','Backup &amp; Disaster Recovery','Business Continuity Plan (RTO / RPO defined)'] },
+    { key:'compliance', name:'Compliance &amp; Cyber Insurance', coverage:'advisory',
+      note:'CNP advises against frameworks (NIST, HIPAA, PCI, CMMC, GLBA/FFIEC); doesn\'t underwrite insurance.',
+      items:['Cyber Insurance Provider','Cyber Insurance Coverage Limits','Compliance Framework(s) in Scope (NIST, HIPAA, PCI, CMMC, GLBA/FFIEC, etc.)','Last Third-Party Risk / Compliance Audit','Penetration Testing (cadence, last performed, vendor)','Vulnerability Scanning Cadence'] }
+  ];
+
+  var STORE_KEY = 'cnp_env_map_saves_v1';
+  var state = {}; // rowId -> {status, vendor, notes}
+
+  function rowId(pillarKey, idx){ return pillarKey + '::' + idx; }
+
+  function badgeLabel(c){
+    return { core:'CNP Core', advisory:'CNP Advisory', partner:'CNP + Partner', outside:'Client-Owned' }[c] || c;
+  }
+
+  function pillarByKey(sec, key){
+    var list = sec === 'env' ? ENV : SEC;
+    return list.filter(function(x){ return x.key === key; })[0];
+  }
+
+  function renderPillar(p, section){
+    var body = '';
+    p.items.forEach(function(item, idx){
+      var id = rowId(p.key, idx);
+      var st = state[id] || { status:'unknown', vendor:'', notes:'' };
+      body += ''+
+        '<div class="item-row" data-row="'+id+'">'+
+          '<div class="item-name">'+item+'</div>'+
+          '<div class="item-vendor"><input type="text" placeholder="Vendor / solution" value="'+escAttr(st.vendor)+'" data-field="vendor" data-row="'+id+'"></div>'+
+          '<div class="status-toggle">'+
+            '<button class="status-btn unknown'+(st.status==='unknown'?' active':'')+'" data-row="'+id+'" data-status="unknown">?</button>'+
+            '<button class="status-btn present'+(st.status==='present'?' active':'')+'" data-row="'+id+'" data-status="present">Yes</button>'+
+            '<button class="status-btn gap'+(st.status==='gap'?' active':'')+'" data-row="'+id+'" data-status="gap">Gap</button>'+
+          '</div>'+
+          '<div class="notes-row"><input type="text" placeholder="Notes (renewal date, owner, context…)" value="'+escAttr(st.notes)+'" data-field="notes" data-row="'+id+'"></div>'+
+        '</div>';
+    });
+    var count = pillarCount(p);
+    return ''+
+      '<div class="pillar '+section+'" data-pillar="'+p.key+'">'+
+        '<div class="pillar-head" data-toggle="'+p.key+'">'+
+          '<div><div class="pillar-title">'+p.name+'</div></div>'+
+          '<div class="pillar-meta">'+
+            '<span class="badge '+p.coverage+'">'+badgeLabel(p.coverage)+'</span>'+
+            '<span class="pillar-count" data-count="'+p.key+'">'+count.present+'/'+count.total+'</span>'+
+            '<span class="chevron">▼</span>'+
+          '</div>'+
+        '</div>'+
+        '<div class="pillar-note">'+p.note+'</div>'+
+        '<div class="pillar-body">'+body+'</div>'+
+      '</div>';
+  }
+
+  function escAttr(s){
+    return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  }
+
+  function pillarCount(p){
+    var present=0;
+    p.items.forEach(function(item, idx){
+      var id = rowId(p.key, idx);
+      if (state[id] && state[id].status === 'present') present++;
+    });
+    return { present: present, total: p.items.length };
+  }
+
+  function renderAll(){
+    document.getElementById('envGrid').innerHTML = ENV.map(function(p){ return renderPillar(p,'env'); }).join('');
+    document.getElementById('secGrid').innerHTML = SEC.map(function(p){ return renderPillar(p,'sec'); }).join('');
+    updateScorecard();
+  }
+
+  function updateScorecard(){
+    var total=0, present=0, gap=0, unknown=0;
+    ENV.concat(SEC).forEach(function(p){
+      p.items.forEach(function(item, idx){
+        total++;
+        var id = rowId(p.key, idx);
+        var s = (state[id] && state[id].status) || 'unknown';
+        if (s==='present') present++; else if (s==='gap') gap++; else unknown++;
+      });
+    });
+    document.getElementById('scoreTotal').textContent = total;
+    document.getElementById('scorePresent').textContent = present;
+    document.getElementById('scoreGap').textContent = gap;
+    document.getElementById('scoreUnknown').textContent = unknown;
+    ENV.concat(SEC).forEach(function(p){
+      var c = pillarCount(p);
+      var el = document.querySelector('[data-count="'+p.key+'"]');
+      if (el) el.textContent = c.present + '/' + c.total;
+    });
+  }
+
+  // Event delegation (Discovery Map)
+  document.addEventListener('click', function(e){
+    var head = e.target.closest('[data-toggle]');
+    if (head){
+      var pillarEl = head.closest('.pillar');
+      pillarEl.classList.toggle('collapsed');
+      return;
+    }
+    var statusBtn = e.target.closest('.status-btn');
+    if (statusBtn){
+      var id = statusBtn.getAttribute('data-row');
+      var status = statusBtn.getAttribute('data-status');
+      if (!state[id]) state[id] = { status:'unknown', vendor:'', notes:'' };
+      state[id].status = status;
+      var row = document.querySelector('.item-row[data-row="'+id+'"]');
+      row.querySelectorAll('.status-btn').forEach(function(b){ b.classList.remove('active'); });
+      statusBtn.classList.add('active');
+      updateScorecard();
+      return;
+    }
+  });
+
+  document.addEventListener('input', function(e){
+    var field = e.target.getAttribute('data-field');
+    if (!field) return;
+    var id = e.target.getAttribute('data-row');
+    if (!state[id]) state[id] = { status:'unknown', vendor:'', notes:'' };
+    state[id][field] = e.target.value;
+  });
+
+  // Save / Load / New / Delete
+  function getSaves(){
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch(e){ return {}; }
+  }
+  function setSaves(obj){
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(obj)); } catch(e){}
+  }
+  function refreshPicker(){
+    var saves = getSaves();
+    var sel = document.getElementById('savedPicker');
+    var current = sel.value;
+    sel.innerHTML = '<option value="">Saved environments&hellip;</option>' +
+      Object.keys(saves).sort().map(function(name){ return '<option value="'+escAttr(name)+'">'+name+'</option>'; }).join('');
+    sel.value = current;
+  }
+
+  document.getElementById('saveBtn').addEventListener('click', function(){
+    var name = document.getElementById('clientName').value.trim();
+    if (!name){ alert('Enter a prospect/client name first.'); return; }
+    var saves = getSaves();
+    saves[name] = state;
+    setSaves(saves);
+    refreshPicker();
+    document.getElementById('savedPicker').value = name;
+  });
+
+  document.getElementById('loadBtn').addEventListener('click', function(){
+    var name = document.getElementById('savedPicker').value;
+    if (!name){ return; }
+    var saves = getSaves();
+    state = saves[name] || {};
+    document.getElementById('clientName').value = name;
+    renderAll();
+  });
+
+  document.getElementById('newBtn').addEventListener('click', function(){
+    if (!confirm('Start a blank environment? Unsaved changes will be lost.')) return;
+    state = {};
+    document.getElementById('clientName').value = '';
+    document.getElementById('savedPicker').value = '';
+    renderAll();
+  });
+
+  document.getElementById('deleteBtn').addEventListener('click', function(){
+    var name = document.getElementById('savedPicker').value;
+    if (!name){ alert('Pick a saved environment to delete.'); return; }
+    if (!confirm('Delete saved environment "'+name+'"?')) return;
+    var saves = getSaves();
+    delete saves[name];
+    setSaves(saves);
+    refreshPicker();
+  });
+
+  document.getElementById('printBtn').addEventListener('click', function(){
+    document.querySelectorAll('.pillar.collapsed').forEach(function(p){ p.classList.remove('collapsed'); });
+    window.print();
+  });
+
+  refreshPicker();
+  renderAll();
+
+  // ================= TAB SWITCHING =================
+  document.querySelectorAll('.tab-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      var which = btn.getAttribute('data-tab');
+      document.getElementById('tab-map').classList.toggle('active', which === 'map');
+      document.getElementById('tab-day').classList.toggle('active', which === 'day');
+      document.getElementById('mapControls').style.display = (which === 'map') ? 'flex' : 'none';
+      if (which === 'map'){
+        document.getElementById('mainTitle').textContent = 'Full Environment & Security Discovery Map';
+        document.getElementById('mainSub').textContent = "Whiteboard this live with a prospect or client: mark each component Present, a Gap, or Unknown as you talk through their environment. Use it to tell the CNP story — where we already fit, and where there's an opening.";
+      } else {
+        document.getElementById('mainTitle').textContent = 'Day in the Life: One Workday, One Stack';
+        document.getElementById('mainSub').textContent = 'Same 15-pillar environment, told as a story — where the stack shows up in an ordinary day, and what breaks when a piece is missing.';
+      }
+    });
+  });
+
+  // ================= DAY IN THE LIFE =================
+  var PERSONAS = {
+    user:   { label:'Basic User',  color:'#1d4e78', defaultName:'Maria, AP Clerk' },
+    admin:  { label:'IT Admin',    color:'#12703c', defaultName:'James, IT Admin' },
+    leader: { label:'Leader',      color:'#92660b', defaultName:'Dana, Ops Director' },
+    clevel: { label:'C-Level',     color:'#5c1418', defaultName:'Robert, CFO' }
+  };
+
+  function badgeFor(pillarSection, key, itemName){
+    var p = pillarByKey(pillarSection, key);
+    if (!p) return '';
+    return '<span class="comp-badge">'+itemName+' <span class="badge '+p.coverage+'" style="margin-left:5px;">'+badgeLabel(p.coverage)+'</span></span>';
+  }
+
+  var BEATS = [
+    { time:'6:45 AM', persona:'user',
+      scenario:'Logs into the company VPN from a home laptop before the office opens to get ahead on invoices.',
+      components: badgeFor('env','network','VPN / Remote Access') + badgeFor('sec','iam','Multi-Factor Authentication (MFA)'),
+      risk:'22% of breaches in the 2025 Verizon DBIR began with credential abuse, and the "human element" (phishing, misuse, error) factors into 60% of all breaches. A VPN without MFA in front of it is one stolen or guessed password away from a walk-in.',
+      src:'Source: Verizon 2025 Data Breach Investigations Report',
+      salesOpp:'If MFA isn’t enforced on every remote path — not just email, but VPN, VDI, and legacy apps — that’s a fast, low-cost, high-visibility win. Good opener because it’s cheap to fix and easy to explain.',
+      scale:null
+    },
+    { time:'7:30 AM', persona:'user',
+      scenario:'Opens an email that looks exactly like an invoice-approval request from a known vendor.',
+      components: badgeFor('sec','netsec','URL Filtering') + badgeFor('sec','netsec','Sandbox Detection') + badgeFor('sec','endpoint','Endpoint Protection / Antivirus (Next-Gen AV)'),
+      risk:'85% of the 4,009 social-engineering incidents analyzed in the 2025 DBIR resulted in confirmed data disclosure, with phishing the entry point in the majority of those. Without link/attachment filtering ahead of the inbox, the decision to click rests entirely on Maria having a perfect day.',
+      src:'Source: Verizon 2025 Data Breach Investigations Report',
+      salesOpp:'A gap here is a Network & Infrastructure Security (advisory-stage) conversation — URL filtering and sandboxing sit alongside the firewall CNP likely already owns.',
+      scale:null
+    },
+    { time:'8:15 AM', persona:'user',
+      scenario:'Pulls up the ERP to process the invoice — the same system three former contractors and a manager who changed roles last spring can technically still log into.',
+      components: badgeFor('env','apps','Core Business Apps (ERP, CRM, LOB)') + badgeFor('sec','iam','Identity Governance &amp; Administration (IGA)'),
+      risk:'Orphaned accounts are invisible risk — they don’t show up until someone (or something) uses one. No dollar figure needed here: the fix is a recurring access review, not a product.',
+      src:null,
+      salesOpp:'This is a discovery question for finance/ops leadership, not a pitch: "when’s the last time someone reviewed who still has access to this system?" Usually surfaces more gaps than expected.',
+      scale:null
+    },
+    { time:'9:00 AM', persona:'admin',
+      scenario:'Provisions system access for a new hire starting Monday.',
+      components: badgeFor('sec','iam','Directory Services (Active Directory / Entra ID)') + badgeFor('sec','iam','Privileged Access Management (PAM)'),
+      risk:'James’s own admin credential is the single highest-value target in the building. Without PAM — just-in-time elevation, session recording, vaulted credentials — a phished admin login hands an attacker the keys to everything, not just one account.',
+      src:null,
+      salesOpp:'PAM is one of the highest-leverage, most under-sold IAM add-ons — most accounts this size have MFA but not PAM. Flag the admin count: this gets more urgent, not less, as the IT team grows.',
+      scale:'Scales with size: matters more once there’s more than one IT admin, or any outsourced/MSP admin access into the environment.'
+    },
+    { time:'9:45 AM', persona:'admin',
+      scenario:'Checks patch compliance and EDR agent health across the fleet from the RMM console.',
+      components: badgeFor('sec','endpoint','Patch Management') + badgeFor('sec','endpoint','Endpoint Detection &amp; Response (EDR) Agent') + badgeFor('env','itops','RMM (Remote Monitoring &amp; Management)'),
+      risk:'An unpatched endpoint without an EDR agent is ransomware’s preferred entry and propagation path. This beat is usually already covered — use it to build credibility, not to find a gap.',
+      src:null,
+      salesOpp:'If this is solid, say so plainly. Trust built here makes the gaps found elsewhere land harder.',
+      scale:null
+    },
+    { time:'10:15 AM', persona:'admin',
+      scenario:'Confirms last night’s backup job actually completed.',
+      components: badgeFor('env','dc','Backup Infrastructure / Target') + badgeFor('sec','ir','Backup &amp; Disaster Recovery') + badgeFor('sec','ir','Business Continuity Plan (RTO / RPO defined)'),
+      risk:'The 2025 Sophos State of Ransomware report found the average recovery cost (excluding any ransom paid) is $1.53M, but 53% of victims with solid recovery capability were back up within a week — up from 35% the year before. The gap between those two numbers is entirely a function of whether backups are tested, not just scheduled.',
+      src:'Source: Sophos State of Ransomware 2025',
+      salesOpp:'"When’s the last time you actually tested a restore, not just confirmed the job ran green?" is the qualifying question. A documented RTO/RPO is usually missing even where backup itself is solid — that’s the BC plan gap.',
+      scale:null
+    },
+    { time:'11:00 AM', persona:'admin',
+      scenario:'Notices an overnight alert on a server that nobody actually saw until just now.',
+      components: badgeFor('sec','secops','SIEM') + badgeFor('sec','secops','SOAR'),
+      risk:'The 2025 IBM Cost of a Data Breach report puts the mean time to identify and contain a breach at 241 days globally — the best it’s been in nine years, and still nearly eight months. That number assumes someone’s watching. Zero after-hours coverage stretches it further.',
+      src:'Source: IBM Cost of a Data Breach Report 2025',
+      salesOpp:'SOC/MDR coverage is usually the single biggest revenue pillar available in an account with no after-hours monitoring today. Ask directly: "who’s watching this at 2am?"',
+      scale:'Scales with size: the cost of staying without 24/7 coverage grows with headcount, data sensitivity, and after-hours business activity (multi-shift ops, e-commerce, etc.).'
+    },
+    { time:'12:30 PM', persona:'leader',
+      scenario:'Pulls a live sales report on her personal phone at lunch.',
+      components: badgeFor('env','enduser','Tablets &amp; Mobile Devices') + badgeFor('sec','endpoint','Mobile Device Management (MDM)'),
+      risk:'An unmanaged personal device holding company data means no remote wipe and no enforced encryption if that phone is lost or stolen — the data walks out the door with the hardware.',
+      src:null,
+      salesOpp:'MDM/BYOD policy scoping — often a capability CNP already has (endpoint pillar) that just hasn’t been extended to personal devices.',
+      scale:null
+    },
+    { time:'1:15 PM', persona:'leader',
+      scenario:'Pastes a client contract into a free AI tool to get a quick summary before a call.',
+      components: badgeFor('sec','aisec','Shadow AI Discovery &amp; Visibility') + badgeFor('sec','aisec','AI Data Loss Prevention (AI-DLP)'),
+      risk:'The 2025 IBM Cost of a Data Breach report found shadow AI — unsanctioned AI tool use — was a factor in 20% of breaches, and added $670,000 to the average cost of those breaches specifically.',
+      src:'Source: IBM Cost of a Data Breach Report 2025',
+      salesOpp:'AI usage policy and governance is a fast, low-friction "yes" once leadership hears that stat — CNP’s newest, most honestly-positioned pillar (advisory-stage), and a good land-and-expand entry into the broader security conversation.',
+      scale:null
+    },
+    { time:'2:00 PM', persona:'leader',
+      scenario:'Approves an ACH payment request that arrived by email, appearing to come from the CFO, asking to expedite a vendor payment.',
+      components: badgeFor('sec','iam','Conditional Access / Zero Trust Policy Engine') + badgeFor('sec','netsec','Data Loss Prevention (DLP)'),
+      risk:'The FBI’s IC3 logged $2.77 billion in business email compromise losses across 21,442 reported incidents in 2024 alone — nearly $8.5B over the prior three years combined. BEC is the costliest cybercrime category by dollar loss, and it beats almost every tool in this stack by exploiting trust and process, not a vulnerability.',
+      src:'Source: FBI IC3 2024 Internet Crime Report',
+      salesOpp:'This is as much a GRC/process conversation as a tooling one — email authentication (DMARC), conditional access, and a documented out-of-band verification step for payment changes. Good bridge into the compliance/GRC advisory relationship, not just a product sale.',
+      scale:null
+    },
+    { time:'3:15 PM', persona:'clevel',
+      scenario:'Logs into the banking portal and financial system from airport Wi-Fi between flights.',
+      components: badgeFor('env','network','VPN / Remote Access') + badgeFor('sec','iam','Identity Threat Detection &amp; Response (ITDR)'),
+      risk:'Public network plus no anomaly detection on logins (impossible travel, new device, new location) means session hijacking or credential replay can go unnoticed — exactly the kind of activity ITDR is built to flag.',
+      src:null,
+      salesOpp:'Executive and finance-team logins are the highest-value accounts in the building. Worth a dedicated zero-trust/ITDR conversation even for an org that isn’t ready for a full IAM overhaul.',
+      scale:'Scales with size: matters immediately regardless of company size — executive travel risk doesn’t wait for headcount.'
+    },
+    { time:'4:00 PM', persona:'clevel',
+      scenario:'A customer’s procurement team sends a security questionnaire ahead of a contract renewal: NIST alignment, last penetration test, cyber insurance coverage.',
+      components: badgeFor('sec','compliance','Compliance Framework(s) in Scope (NIST, HIPAA, PCI, CMMC, GLBA/FFIEC, etc.)') + badgeFor('sec','compliance','Penetration Testing (cadence, last performed, vendor)') + badgeFor('sec','compliance','Cyber Insurance Coverage Limits'),
+      risk:'Not being able to answer confidently stalls the deal — or produces a rushed answer that creates real liability. Carriers are also increasingly scrutinizing claims against what an application attested to; a gap between "what we told the insurer" and "what’s actually in place" can mean a denied claim at the worst possible moment.',
+      src:null,
+      salesOpp:'The customer’s own procurement process just did the qualifying work for you — this is the natural on-ramp to a NIST CSF assessment.',
+      scale:'Scales with size and regulation: becomes non-negotiable in regulated verticals (healthcare, financial services, state/local gov) regardless of headcount.'
+    },
+    { time:'Overnight', persona:'admin',
+      scenario:'2:00 AM. No one’s badging in. If something is going to detonate, this is when it happens.',
+      components: badgeFor('sec','secops','SIEM') + badgeFor('sec','ir','IR Retainer (external firm on call)') + badgeFor('sec','ir','Tabletop Exercise Cadence'),
+      risk:'The same 241-day mean detection/containment window from IBM’s 2025 report gets worse, not better, in the hours nobody’s watching. And without a rehearsed IR plan, the first hours of a real incident get lost to confusion about who does what — not to the attacker.',
+      src:'Source: IBM Cost of a Data Breach Report 2025',
+      salesOpp:'Closing beat — ties the whole day together. Natural transition to "let’s map where your gaps actually are" and back to the Discovery Map tab.',
+      scale:null
+    }
+  ];
+
+  function renderBeat(b, idx){
+    var p = PERSONAS[b.persona];
+    var riskHtml = b.risk + (b.src ? ' <span class="src">('+b.src+')</span>' : '');
+    var scaleHtml = b.scale ? '<div class="scale-flag">⚡ '+b.scale+'</div>' : '';
+    return ''+
+      '<div class="beat" style="border-left-color:'+p.color+'" data-beat="'+idx+'">'+
+        '<div class="beat-head" data-toggle-beat="'+idx+'">'+
+          '<div class="beat-time">'+b.time+'</div>'+
+          '<div class="beat-persona-chip" style="background:'+p.color+'" data-persona="'+b.persona+'">'+p.label+'</div>'+
+          '<div class="beat-scenario" data-scenario="'+idx+'">'+b.scenario+'</div>'+
+          '<div class="beat-chevron">▼</div>'+
+        '</div>'+
+        '<div class="beat-body">'+
+          '<div class="beat-row"><div class="row-label">Components in play</div><div class="row-body comp-badges">'+b.components+'</div>'+scaleHtml+'</div>'+
+          '<div class="beat-row"><div class="row-label">Risk if this is a gap</div><div class="row-body">'+riskHtml+'</div></div>'+
+          '<div class="beat-row rep-only"><div class="row-label">CNP angle (rep only)</div><div class="row-body">'+b.salesOpp+'</div></div>'+
+        '</div>'+
+      '</div>';
+  }
+
+  function personaDisplayName(key){
+    var el = document.getElementById('dtlName' + key.charAt(0).toUpperCase() + key.slice(1));
+    if (el && el.value.trim()) return el.value.trim();
+    return PERSONAS[key].defaultName;
+  }
+  // map persona keys to input id suffixes (clevel -> CLevel)
+  var NAME_INPUT_ID = { user:'dtlNameUser', admin:'dtlNameAdmin', leader:'dtlNameLeader', clevel:'dtlNameCLevel' };
+
+  function renderTimeline(){
+    var company = document.getElementById('dtlCompany').value.trim();
+    document.getElementById('dtlTimeline').innerHTML = BEATS.map(renderBeat).join('');
+    updatePersonaNamesInScenarios(company);
+  }
+
+  function updatePersonaNamesInScenarios(company){
+    Object.keys(PERSONAS).forEach(function(key){
+      var input = document.getElementById(NAME_INPUT_ID[key]);
+      var custom = input && input.value.trim();
+      document.querySelectorAll('.beat-persona-chip[data-persona="'+key+'"]').forEach(function(chip){
+        chip.textContent = custom ? custom : PERSONAS[key].label;
+      });
+      document.querySelectorAll('.sv-persona-name[data-persona="'+key+'"]').forEach(function(el){
+        el.textContent = custom ? custom : PERSONAS[key].label;
+      });
+    });
+  }
+
+  document.getElementById('dtlTimeline') && renderTimeline();
+
+  document.addEventListener('click', function(e){
+    var beatHead = e.target.closest('[data-toggle-beat]');
+    if (beatHead){
+      beatHead.closest('.beat').classList.toggle('collapsed');
+      return;
+    }
+    var viewBtn = e.target.closest('.view-toggle button');
+    if (viewBtn){
+      document.querySelectorAll('.view-toggle button').forEach(function(b){ b.classList.remove('active'); });
+      viewBtn.classList.add('active');
+      var view = viewBtn.getAttribute('data-view');
+      document.body.classList.toggle('prospect-view', view === 'prospect');
+      return;
+    }
+  });
+
+  ['dtlCompany','dtlNameUser','dtlNameAdmin','dtlNameLeader','dtlNameCLevel'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('input', function(){ updatePersonaNamesInScenarios(document.getElementById('dtlCompany').value.trim()); });
+  });
+
+  // ================= STATIC VIEW (persona journey maps) =================
+  var CATS = {
+    device:  { label:'DEVICE',      color:'#1d4e78' },
+    identity:{ label:'IDENTITY',    color:'#12703c' },
+    email:   { label:'EMAIL',       color:'#92660b' },
+    network: { label:'NETWORK',     color:'#0e7c86' },
+    apps:    { label:'APPS+CLOUD',  color:'#6b2fa3' },
+    data:    { label:'DATA',        color:'#8a2a2a' },
+    recovery:{ label:'RECOVERY',    color:'#3d4a5a' }
+  };
+
+  var CROSS_BANDS = [
+    { title:'AI Security', tag:'crosses the entire journey', desc:'AI/LLM Usage Governance Policy &middot; Shadow AI Discovery &amp; Visibility &middot; AI-DLP &middot; Enterprise AI Tool Security (e.g. Copilot) &middot; Prompt Injection Monitoring' },
+    { title:'Detection &amp; Response', tag:'watches every step', desc:'SIEM &middot; EDR/XDR &middot; SOAR &middot; 24/7 SOC Monitoring &middot; Incident Response Retainer' },
+    { title:'Governance &amp; Resilience', tag:'surrounds the environment', desc:'Compliance Frameworks (NIST/HIPAA/PCI/CMMC) &middot; Access &amp; Risk Reviews &middot; Backup &amp; Disaster Recovery &middot; Business Continuity Planning &middot; Cyber Insurance Review' }
+  ];
+
+  var SIMPLE = {
+    overview: {
+      title:'CNP &mdash; A Day in the Life of Your Business',
+      sub:'Follow the employee, follow the technology, follow the data, expose the risk, identify the control, and uncover the CNP opportunity.',
+      cats:[
+        {cat:'device', tag:'EDR / patching'},
+        {cat:'identity', tag:'MFA / access'},
+        {cat:'email', tag:'phishing / BEC'},
+        {cat:'network', tag:'VPN / segmentation'},
+        {cat:'apps', tag:'SaaS / shadow AI'},
+        {cat:'data', tag:'DLP / sharing'},
+        {cat:'recovery', tag:'backup / IR'}
+      ],
+      personas:[
+        {label:'Basic User', desc:'Front-line staff &mdash; the highest-volume, lowest-cost-to-fix gaps in the building.'},
+        {label:'IT Admin', desc:'Keeps the lights on &mdash; where PAM and after-hours coverage usually separate solid from exposed.'},
+        {label:'Business Leader', desc:'Department/ops management &mdash; where policy and governance gaps (BYOD, shadow AI, BEC) live.'},
+        {label:'C-Level', desc:'Exec/finance leadership &mdash; the highest-value targets, and the fastest path to a board-level conversation.'}
+      ]
+    },
+    user: {
+      title:'Persona 1 &mdash; Basic User: Front Line, First Target',
+      sub:'The highest-volume, lowest-cost-to-fix gaps in the building &mdash; good ice-breakers before the bigger conversation.',
+      lens:'Sales lens: basic-user gaps are cheap, fast, visible wins.',
+      stages:[
+        {cat:'device', title:'Laptop &amp; Endpoint', desc:'Logs in from a home laptop before the office opens.', tags:['EDR','Patching','Encryption'], ask:'Are personal or remote devices held to the same endpoint standard as ones in the building?'},
+        {cat:'identity', title:'VPN + MFA', desc:'Remote access into the network to get ahead on invoices.', tags:['VPN / Remote Access','MFA'], ask:'Is MFA enforced on every remote path — not just email?'},
+        {cat:'email', title:'The Invoice Email', desc:'Opens a message that looks exactly like a known vendor’s approval request.', tags:['URL Filtering','Sandbox Detection','Anti-Phishing'], ask:'What stops a convincing phishing email from ever reaching the inbox?'},
+        {cat:'apps', title:'The ERP Login', desc:'Pulls up the ERP system — the same one three former contractors can technically still access.', tags:['Core Business Apps','Identity Governance'], ask:'When’s the last time someone reviewed who still has access to this system?'},
+        {cat:'network', title:'Guest &amp; Segmented Wi-Fi', desc:'Connects a phone to guest Wi-Fi on a break.', tags:['Network Segmentation','Guest Wi-Fi'], ask:'Is guest traffic actually walled off from the production network?'},
+        {cat:'data', title:'Sharing a File', desc:'Emails a spreadsheet with customer data to a personal account to finish later.', tags:['Data Loss Prevention (DLP)'], ask:'Would anyone notice if sensitive data left through this channel?'}
+      ]
+    },
+    admin: {
+      title:'Persona 2 &mdash; IT Admin: Keeping the Lights On',
+      sub:'Usually the most solid persona in the day &mdash; PAM and after-hours coverage are the real gaps.',
+      lens:'Sales lens: this is where trust gets built or lost.',
+      stages:[
+        {cat:'identity', title:'New Hire Provisioning', desc:'Provisions system access for a new hire starting Monday.', tags:['Directory Services (AD/Entra ID)','PAM'], ask:'If the admin’s own credential were phished, could an attacker move laterally with it?'},
+        {cat:'device', title:'Patch &amp; EDR Sweep', desc:'Checks patch compliance and EDR agent health across the fleet.', tags:['Patch Management','EDR Agent','RMM'], ask:'Is every endpoint enrolled, or are there always a few stragglers?'},
+        {cat:'data', title:'Backup Check', desc:'Confirms last night’s backup job actually completed.', tags:['Backup Infrastructure','RTO / RPO'], ask:'When’s the last time someone tested a restore, not just confirmed the job ran green?'},
+        {cat:'network', title:'Firewall &amp; Segmentation Review', desc:'Reviews firewall rules ahead of a vendor’s remote access request.', tags:['HW/SW Firewall','Network Segmentation'], ask:'Does every third-party remote access request get the same scrutiny?'},
+        {cat:'apps', title:'Cloud Tenant Admin', desc:'Reviews Microsoft 365 / Azure admin roles granted to the team.', tags:['M365/Azure Tenant','Conditional Access'], ask:'How many people hold global admin who don’t need it day to day?'},
+        {cat:'recovery', title:'The Overnight Alert', desc:'Notices a 2 AM alert on a server that nobody actually saw until just now.', tags:['SIEM','SOAR','24/7 Monitoring'], ask:'Who’s watching this at 2am?'}
+      ]
+    },
+    leader: {
+      title:'Persona 3 &mdash; Business Leader: Running the Floor',
+      sub:'Mostly policy and governance gaps &mdash; good land-and-expand entries into the broader security conversation.',
+      lens:'Sales lens: usually a policy conversation, not a big-ticket tooling one.',
+      stages:[
+        {cat:'device', title:'Phone at Lunch', desc:'Pulls a live sales report on her personal phone at lunch.', tags:['MDM','Mobile Device Security'], ask:'If that phone were lost tonight, could the company remote-wipe it?'},
+        {cat:'apps', title:'Free AI Tool', desc:'Pastes a client contract into a free AI tool to get a quick summary before a call.', tags:['Shadow AI Discovery','AI-DLP'], ask:'Does anyone know what data is leaving through AI tools nobody approved?'},
+        {cat:'email', title:'The CFO Request', desc:'Approves an ACH payment request that arrived by email, appearing to come from the CFO.', tags:['Conditional Access','DLP','Email Authentication (DMARC)'], ask:'Is there a required out-of-band verification step before any payment change goes through?'},
+        {cat:'identity', title:'Team Access Review', desc:'Signs off on a quarterly access review for her department’s systems.', tags:['Identity Governance','Access Reviews'], ask:'Is this review a real audit, or a rubber stamp?'},
+        {cat:'network', title:'Remote Team Check-in', desc:'Checks in with a remote employee working from a coffee shop.', tags:['VPN / Remote Access','Secure Web Gateway'], ask:'Is remote work traffic actually inspected, or just tunneled?'},
+        {cat:'data', title:'The Vendor Questionnaire', desc:'Fields a data-handling question from a customer’s procurement team.', tags:['Data Loss Prevention','Compliance Framework'], ask:'Could we answer that confidently today?'}
+      ]
+    },
+    clevel: {
+      title:'Persona 4 &mdash; C-Level: The Airport Login',
+      sub:'Executive-tier risk doesn’t wait for headcount &mdash; the fastest path to a board-level conversation.',
+      lens:'Sales lens: highest-value accounts in the building.',
+      stages:[
+        {cat:'network', title:'Airport Wi-Fi', desc:'Logs into the banking portal and financial system from airport Wi-Fi between flights.', tags:['VPN / Remote Access','ITDR'], ask:'Would anyone catch an impossible-travel login on this account?'},
+        {cat:'identity', title:'The Executive Account', desc:'His own login is the single highest-value credential in the company.', tags:['Conditional Access','Zero Trust Policy Engine'], ask:'Does the CFO’s account get extra scrutiny, or the same baseline as everyone else’s?'},
+        {cat:'email', title:'Wire Transfer Approval', desc:'Reviews a wire transfer request flagged as urgent.', tags:['Email Authentication (DMARC)','DLP'], ask:'What’s the actual process if a payment request looks even slightly off?'},
+        {cat:'apps', title:'Board Deck in the Cloud', desc:'Shares a board deck with financial projections via a cloud drive link.', tags:['CASB','Data Security Posture Mgmt.'], ask:'Who can see that link, and for how long?'},
+        {cat:'data', title:'The Security Questionnaire', desc:'A customer’s procurement team asks about NIST alignment, last pen test, cyber insurance.', tags:['Compliance Framework','Penetration Testing','Cyber Insurance'], ask:'Could we answer this confidently today, or would it stall the deal?'},
+        {cat:'recovery', title:'The Board Question', desc:'Gets asked by the board what happens if the company gets hit by ransomware tomorrow.', tags:['IR Retainer','Tabletop Exercises','BC Plan'], ask:'Is there an actual rehearsed plan, or just an assumption that IT will handle it?'}
+      ]
+    }
+  };
+
+  var FULL_TAX = {
+    user: [
+      {sec:'env',key:'network',item:'VPN / Remote Access'},
+      {sec:'sec',key:'iam',item:'Multi-Factor Authentication (MFA)'},
+      {sec:'sec',key:'netsec',item:'URL Filtering'},
+      {sec:'sec',key:'netsec',item:'Sandbox Detection'},
+      {sec:'sec',key:'endpoint',item:'Endpoint Protection / Antivirus (Next-Gen AV)'},
+      {sec:'env',key:'apps',item:'Core Business Apps (ERP, CRM, LOB)'},
+      {sec:'sec',key:'iam',item:'Identity Governance &amp; Administration (IGA)'}
+    ],
+    admin: [
+      {sec:'sec',key:'iam',item:'Directory Services (Active Directory / Entra ID)'},
+      {sec:'sec',key:'iam',item:'Privileged Access Management (PAM)'},
+      {sec:'sec',key:'endpoint',item:'Patch Management'},
+      {sec:'sec',key:'endpoint',item:'Endpoint Detection &amp; Response (EDR) Agent'},
+      {sec:'env',key:'itops',item:'RMM (Remote Monitoring &amp; Management)'},
+      {sec:'env',key:'dc',item:'Backup Infrastructure / Target'},
+      {sec:'sec',key:'ir',item:'Backup &amp; Disaster Recovery'},
+      {sec:'sec',key:'ir',item:'Business Continuity Plan (RTO / RPO defined)'},
+      {sec:'sec',key:'secops',item:'SIEM'},
+      {sec:'sec',key:'secops',item:'SOAR'},
+      {sec:'sec',key:'ir',item:'IR Retainer (external firm on call)'},
+      {sec:'sec',key:'ir',item:'Tabletop Exercise Cadence'}
+    ],
+    leader: [
+      {sec:'env',key:'enduser',item:'Tablets &amp; Mobile Devices'},
+      {sec:'sec',key:'endpoint',item:'Mobile Device Management (MDM)'},
+      {sec:'sec',key:'aisec',item:'Shadow AI Discovery &amp; Visibility'},
+      {sec:'sec',key:'aisec',item:'AI Data Loss Prevention (AI-DLP)'},
+      {sec:'sec',key:'iam',item:'Conditional Access / Zero Trust Policy Engine'},
+      {sec:'sec',key:'netsec',item:'Data Loss Prevention (DLP)'}
+    ],
+    clevel: [
+      {sec:'env',key:'network',item:'VPN / Remote Access'},
+      {sec:'sec',key:'iam',item:'Identity Threat Detection &amp; Response (ITDR)'},
+      {sec:'sec',key:'compliance',item:'Compliance Framework(s) in Scope (NIST, HIPAA, PCI, CMMC, GLBA/FFIEC, etc.)'},
+      {sec:'sec',key:'compliance',item:'Penetration Testing (cadence, last performed, vendor)'},
+      {sec:'sec',key:'compliance',item:'Cyber Insurance Coverage Limits'}
+    ]
+  };
+
+  var svState = { cat:'simplified', persona:'overview' };
+
+  function renderCrossBands(){
+    return '<div class="cross-bands">' + CROSS_BANDS.map(function(b){
+      return '<div class="cross-band"><b>'+b.title+'</b> &mdash; '+b.tag+'<br>'+b.desc+'</div>';
+    }).join('') + '</div>';
+  }
+
+  function renderSimpleOverview(){
+    var d = SIMPLE.overview;
+    var catRow = d.cats.map(function(c, i){
+      var meta = CATS[c.cat];
+      var box = '<div class="stage-box" style="border-top-color:'+meta.color+'"><div class="stage-cat">'+meta.label+'</div><div class="stage-desc">'+c.tag+'</div></div>';
+      return box + (i < d.cats.length - 1 ? '<div class="stage-arrow">&rsaquo;</div>' : '');
+    }).join('');
+    var personaRows = d.personas.map(function(p){
+      return '<div class="ov-personarow"><b>'+p.label+'</b><span>'+p.desc+'</span></div>';
+    }).join('');
+    return ''+
+      '<div class="static-panel">'+
+        '<h3>'+d.title+'</h3>'+
+        '<div class="sp-sub">'+d.sub+'</div>'+
+        '<div class="ov-catrow">'+catRow+'</div>'+
+        personaRows+
+        renderCrossBands()+
+      '</div>';
+  }
+
+  function renderSimplePersona(key){
+    var d = SIMPLE[key];
+    var half = Math.ceil(d.stages.length / 2);
+    function stageBox(s, i, arr){
+      var meta = CATS[s.cat];
+      var tags = s.tags.map(function(t){ return '<span class="stage-tag">'+t+'</span>'; }).join('');
+      var box = '<div class="stage-box" style="border-top-color:'+meta.color+'">'+
+        '<div class="stage-cat">'+meta.label+'</div>'+
+        '<div class="stage-title">'+s.title+'</div>'+
+        '<div class="stage-desc">'+s.desc+'</div>'+
+        '<div class="stage-tags">'+tags+'</div>'+
+        '<div class="stage-ask"><b>Ask:</b> '+s.ask+'</div>'+
+      '</div>';
+      return box + (i < arr.length - 1 ? '<div class="stage-arrow">&rsaquo;</div>' : '');
+    }
+    var row1 = d.stages.slice(0, half).map(function(s,i,arr){ return stageBox(s,i,arr); }).join('');
+    var row2 = d.stages.slice(half).map(function(s,i,arr){ return stageBox(s,i,arr); }).join('');
+    return ''+
+      '<div class="static-panel">'+
+        '<h3>'+d.title+'</h3>'+
+        '<div class="sp-sub">'+d.sub+'</div>'+
+        '<div class="static-lens sv-rep-only">'+d.lens+'</div>'+
+        '<div class="stage-row">'+row1+'</div>'+
+        '<div class="stage-row stage-row-2">'+row2+'</div>'+
+        renderCrossBands()+
+      '</div>';
+  }
+
+  function renderFullOverview(){
+    var cards = ENV.concat(SEC).map(function(p){
+      return '<div class="tax-card"><div class="tax-pillarline">'+badgeLabel(p.coverage)+'</div><div class="tax-item">'+p.name+'</div><div class="tax-note">'+p.note+'</div></div>';
+    }).join('');
+    return ''+
+      '<div class="static-panel">'+
+        '<h3>CNP Full Taxonomy &mdash; All 15 Pillars</h3>'+
+        '<div class="sp-sub">The same 7-environment / 8-security pillar structure used in the Discovery Map tab, shown as a single reference view before drilling into each persona’s day.</div>'+
+        '<div class="tax-grid">'+cards+'</div>'+
+      '</div>';
+  }
+
+  function renderFullPersona(key){
+    var items = FULL_TAX[key];
+    var cards = items.map(function(it){
+      var p = pillarByKey(it.sec, it.key);
+      return '<div class="tax-card"><div class="tax-pillarline">'+p.name+' &middot; '+badgeLabel(p.coverage)+'</div><div class="tax-item">'+it.item+'</div><div class="tax-note">'+p.note+'</div></div>';
+    }).join('');
+    var d = SIMPLE[key];
+    return ''+
+      '<div class="static-panel">'+
+        '<h3>'+d.title.replace('Persona', 'Full Taxonomy — Persona')+'</h3>'+
+        '<div class="sp-sub">Every CNP-mapped component this persona touches across the day, using the exact pillar taxonomy and coverage badges from the Discovery Map tab.</div>'+
+        '<div class="tax-grid">'+cards+'</div>'+
+        renderCrossBands()+
+      '</div>';
+  }
+
+  function renderStaticPanel(){
+    var host = document.getElementById('staticPanelHost');
+    if (!host) return;
+    var html;
+    if (svState.cat === 'simplified'){
+      html = svState.persona === 'overview' ? renderSimpleOverview() : renderSimplePersona(svState.persona);
+    } else {
+      html = svState.persona === 'overview' ? renderFullOverview() : renderFullPersona(svState.persona);
+    }
+    host.innerHTML = html;
+    updatePersonaNamesInScenarios(document.getElementById('dtlCompany').value.trim());
+  }
+
+  document.addEventListener('click', function(e){
+    var modeBtn = e.target.closest('#dtlModeToggle button');
+    if (modeBtn){
+      document.querySelectorAll('#dtlModeToggle button').forEach(function(b){ b.classList.remove('active'); });
+      modeBtn.classList.add('active');
+      var mode = modeBtn.getAttribute('data-mode');
+      document.getElementById('timelineView').style.display = (mode === 'timeline') ? '' : 'none';
+      document.getElementById('staticView').style.display = (mode === 'static') ? '' : 'none';
+      if (mode === 'static') renderStaticPanel();
+      return;
+    }
+    var subBtn = e.target.closest('#svSubtoggle button');
+    if (subBtn){
+      document.querySelectorAll('#svSubtoggle button').forEach(function(b){ b.classList.remove('active'); });
+      subBtn.classList.add('active');
+      svState.cat = subBtn.getAttribute('data-cat');
+      renderStaticPanel();
+      return;
+    }
+    var pBtn = e.target.closest('#svPersonaTabs button');
+    if (pBtn){
+      document.querySelectorAll('#svPersonaTabs button').forEach(function(b){ b.classList.remove('active'); });
+      pBtn.classList.add('active');
+      svState.persona = pBtn.getAttribute('data-persona');
+      renderStaticPanel();
+      return;
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
